@@ -1,4 +1,4 @@
-require 'thor-fix'
+require 'everyday_thor_util/thor-fix'
 require 'everyday-plugins'
 include EverydayPlugins
 require 'thor'
