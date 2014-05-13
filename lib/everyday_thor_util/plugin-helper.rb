@@ -8,6 +8,7 @@ class Thor
     def create_method(name, &block)
       self.send(:define_method, name, &block)
     end
+
     def dup_method(new_name, old_name)
       self.send(:alias_method, new_name, old_name)
     end
@@ -20,7 +21,7 @@ module EverydayThorUtil
     extend TypeHelper
 
     class << self
-      def def_types(command_array_symbol, flag_symbol, command_symbol)
+      def def_types(command_array_symbol, flag_symbol, command_symbol, helper_symbol = nil)
         register_variable command_array_symbol, []
 
         register_type(flag_symbol) { |list, parent_class, parent, has_children|
@@ -39,6 +40,7 @@ module EverydayThorUtil
         }
 
         register_type(command_symbol) { |list, parent_class, parent|
+          Plugins.get helper_symbol, parent_class, nil unless parent || helper_symbol.nil?
           Plugins.get flag_symbol, parent_class, nil, true unless parent
           filtered_list = list.select { |v| v[:options][:parent] == parent || nil }
           filtered_list.each { |v|
@@ -57,6 +59,7 @@ module EverydayThorUtil
                   Plugins.set_var command_array_symbol, command_ids
                   command_class = Class.new(Thor)
                   command_class.namespace name
+                  Plugins.get helper_symbol, command_class, id unless helper_symbol.nil?
                   Plugins.get flag_symbol, command_class, id, true
                   Plugins.get command_symbol, command_class, id
                   Plugins.get flag_symbol, parent_class, id, false
@@ -89,6 +92,16 @@ module EverydayThorUtil
             end
           }
         }
+
+        unless helper_symbol.nil?
+          register_type(helper_symbol) { |list, parent_class, parent|
+            filtered_list = list.select { |v| v[:options][:parent] == parent }
+            filtered_list.each { |v|
+              name = v[:options][:name].to_sym
+              parent_class.no_commands { parent_class.create_method name, &v[:block] } if v[:block]
+            }
+          }
+        end
       end
     end
   end
