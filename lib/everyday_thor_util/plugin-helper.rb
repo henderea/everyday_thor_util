@@ -8,6 +8,9 @@ class Thor
     def create_method(name, &block)
       self.send(:define_method, name, &block)
     end
+    def dup_method(new_name, old_name)
+      self.send(:alias_method, new_name, old_name)
+    end
   end
 end
 
@@ -44,6 +47,7 @@ module EverydayThorUtil
             desc       = v[:options][:desc]
             long_desc  = v[:options][:long_desc]
             name       = v[:options][:name]
+            aliases    = v[:options][:aliases]
             if id && name
               has_children = list.any? { |v2| v2[:options][:parent] == id }
               if has_children
@@ -59,12 +63,28 @@ module EverydayThorUtil
                   parent_class.desc short_desc, desc if short_desc && desc
                   parent_class.long_desc long_desc if long_desc
                   parent_class.subcommand name, command_class
+                  aliases.each { |a|
+                    command_class2 = Class.new(Thor)
+                    command_class2.namespace a
+                    Plugins.get flag_symbol, command_class2, id, true
+                    Plugins.get command_symbol, command_class2, id
+                    Plugins.get flag_symbol, parent_class, id, false
+                    parent_class.desc short_desc.gsub(/^#{name}/, a), desc if short_desc && desc
+                    parent_class.long_desc long_desc if long_desc
+                    parent_class.subcommand a, command_class2
+                  } if aliases
                 end
               elsif v[:block]
                 Plugins.get flag_symbol, parent_class, id, false
                 parent_class.desc short_desc, desc if short_desc && desc
                 parent_class.long_desc long_desc if long_desc
                 parent_class.create_method(name.to_sym, &v[:block])
+                aliases.each { |a|
+                  Plugins.get flag_symbol, parent_class, id, false
+                  parent_class.desc short_desc.gsub(/^#{name}/, a), desc if short_desc && desc
+                  parent_class.long_desc long_desc if long_desc
+                  parent_class.dup_method a.to_sym, name.to_sym
+                } if aliases
               end
             end
           }
