@@ -110,7 +110,7 @@ module EverydayThorUtil
           when :print_info
             register(helper_symbol, name: (method_name || 'print_info'), global: global, parent: parent) { |meth, &eval_block|
               meth_obj = self.method(meth)
-              puts "command: #{meth.to_s}"
+              puts "command: #{self.class.basename2} #{meth.to_s}"
               puts "parent_options: #{parent_options.inspect}"
               puts "options: #{options.inspect}"
               meth_obj.parameters.each { |p| puts "#{p[1].to_s}: #{eval_block.call(p[1].to_s)}" } if eval_block
