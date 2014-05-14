@@ -95,7 +95,7 @@ module EverydayThorUtil
 
         unless helper_symbol.nil?
           register_type(helper_symbol) { |list, parent_class, parent|
-            filtered_list = list.select { |v| v[:options][:parent] == parent }
+            filtered_list = list.select { |v| v[:options][:parent] == parent || v[:options][:global] }
             filtered_list.each { |v|
               name = v[:options][:name].to_sym
               parent_class.no_commands { parent_class.create_method name, &v[:block] } if v[:block]
