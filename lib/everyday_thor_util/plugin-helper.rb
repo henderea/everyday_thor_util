@@ -18,6 +18,7 @@ end
 module EverydayThorUtil
   class SubCommandTypes
     extend PluginType
+    extend Plugin
     extend TypeHelper
 
     class << self
@@ -101,6 +102,21 @@ module EverydayThorUtil
               parent_class.no_commands { parent_class.create_method name, &v[:block] } if v[:block]
             }
           }
+        end
+      end
+
+      def def_helper(helper_symbol, which_helper, method_name = nil, global = true, parent = nil)
+        case(which_helper)
+          when :print_info
+            register(helper_symbol, name: (method_name || 'print_info'), global: global, parent: parent) { |meth, &eval_block|
+              meth_obj = self.method(meth)
+              puts "command: #{meth.to_s}"
+              puts "parent_options: #{parent_options.inspect}"
+              puts "options: #{options.inspect}"
+              meth_obj.parameters.each { |p| puts "#{p[1].to_s}: #{eval_block.call(p[1].to_s)}" } if eval_block
+            }
+          else
+            puts "Unknown helper #{which_helper}"
         end
       end
     end
