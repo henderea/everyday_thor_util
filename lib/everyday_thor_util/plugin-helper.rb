@@ -3,15 +3,13 @@ require 'everyday-plugins'
 include EverydayPlugins
 require 'thor'
 
-class Thor
-  class << self
-    def create_method(name, &block)
-      self.send(:define_method, name, &block)
-    end
+class Module
+  def create_method(name, &block)
+    self.send(:define_method, name, &block)
+  end
 
-    def dup_method(new_name, old_name)
-      self.send(:alias_method, new_name, old_name)
-    end
+  def dup_method(new_name, old_name)
+    self.send(:alias_method, new_name, old_name)
   end
 end
 
@@ -106,7 +104,7 @@ module EverydayThorUtil
       end
 
       def def_helper(helper_symbol, which_helper, method_name = nil, global = true, parent = nil)
-        case(which_helper)
+        case (which_helper)
           when :print_info
             register(helper_symbol, name: (method_name || 'print_info'), global: global, parent: parent) { |meth, &eval_block|
               meth_obj = self.method(meth)
@@ -118,6 +116,37 @@ module EverydayThorUtil
           else
             puts "Unknown helper #{which_helper}"
         end
+      end
+
+      def add_debugging(base, option_sym, env_sym)
+        methods = base.commands.keys - base.subcommands
+        base.class_eval {
+          methods.each { |method_name|
+            original_method = instance_method(method_name)
+            no_commands {
+              define_method(method_name) { |*args, &block|
+                debug = if options.has_key?(option_sym.to_s) || options.has_key?(option_sym.to_sym)
+                          options[option_sym.to_sym]
+                        else
+                          d = ENV[env_sym.to_s]
+                          d == '1' || d == 1 || d == 'true' || d == 't'
+                        end
+                if debug
+                  puts "command: #{self.class.basename2} #{__method__.to_s}"
+                  puts "parent_options: #{parent_options.inspect}"
+                  puts "options: #{options.inspect}"
+                  original_method.parameters.each_with_index { |p, i| puts "#{p[1].to_s}: #{args[i]}" }
+                end
+                begin
+                  original_method.bind(self).call(*args, &block)
+                rescue ArgumentError => e
+                  base.handle_argument_error(base.commands[method_name], e, args, original_method.arity)
+                end
+              }
+            }
+          }
+        }
+        base.subcommand_classes.values.each { |c| add_debugging(c, option_sym, env_sym) }
       end
     end
   end
