@@ -71,7 +71,7 @@ module EverydayThorUtil
                     Plugins.get flag_symbol, command_class2, id, true
                     Plugins.get command_symbol, command_class2, id
                     Plugins.get flag_symbol, parent_class, id, false
-                    parent_class.desc short_desc.gsub(/^#{name}/, a), desc if short_desc && desc
+                    parent_class.desc short_desc.gsub(/^\S+(?=\s|$)/, a.gsub(/_/, '-')), desc if short_desc && desc
                     parent_class.long_desc long_desc if long_desc
                     parent_class.subcommand a, command_class2
                   } if aliases
@@ -83,7 +83,7 @@ module EverydayThorUtil
                 parent_class.create_method(name.to_sym, &v[:block])
                 aliases.each { |a|
                   Plugins.get flag_symbol, parent_class, id, false
-                  parent_class.desc short_desc.gsub(/^#{name}/, a), desc if short_desc && desc
+                  parent_class.desc short_desc.gsub(/^\S+(?=\s|$)/, a.gsub(/_/, '-')), desc if short_desc && desc
                   parent_class.long_desc long_desc if long_desc
                   parent_class.dup_method a.to_sym, name.to_sym
                 } if aliases
@@ -125,14 +125,14 @@ module EverydayThorUtil
             original_method = instance_method(method_name)
             no_commands {
               define_method(method_name) { |*args, &block|
-                debug = if options.has_key?(option_sym.to_s) || options.has_key?(option_sym.to_sym)
+                debug = if option_sym && (options.has_key?(option_sym.to_s) || options.has_key?(option_sym.to_sym))
                           options[option_sym.to_sym]
-                        else
+                        elsif env_sym
                           d = ENV[env_sym.to_s]
                           d == '1' || d == 1 || d == 'true' || d == 't'
                         end
                 if debug
-                  puts "command: #{self.class.basename2} #{__method__.to_s}"
+                  puts "command: #{self.class.basename2} #{__method__.gsub(/_/, '-').to_s}"
                   puts "parent_options: #{parent_options.inspect}"
                   puts "options: #{options.inspect}"
                   original_method.parameters.each_with_index { |p, i| puts "#{p[1].to_s}: #{args[i]}" }

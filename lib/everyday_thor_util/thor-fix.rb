@@ -21,5 +21,13 @@ class Thor
       subcommand_class.parent_class = self
       old_subcommand(subcommand, subcommand_class)
     end
+
+    def handle_argument_error(command, error, args, arity)
+      msg = "ERROR: \"#{basename2} #{command.name.gsub(/_/, '-')}\" was called with "
+      msg << 'no arguments' if args.empty?
+      msg << 'arguments ' << args.inspect unless args.empty?
+      msg << "\nUsage: #{banner(command).inspect}"
+      fail InvocationError, msg
+    end
   end
 end
