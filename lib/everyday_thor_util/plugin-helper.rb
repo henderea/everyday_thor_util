@@ -68,6 +68,7 @@ module EverydayThorUtil
                   aliases.each { |a|
                     command_class2 = Class.new(Thor)
                     command_class2.namespace a
+                    Plugins.get helper_symbol, command_class2, id unless helper_symbol.nil?
                     Plugins.get flag_symbol, command_class2, id, true
                     Plugins.get command_symbol, command_class2, id
                     Plugins.get flag_symbol, parent_class, id, false
