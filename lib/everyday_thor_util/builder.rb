@@ -239,12 +239,12 @@ module EverydayThorUtil
             pc.subcommand an, cc2
           } if aliases && !aliases.empty?
         elsif c.body
-          c.flags.flags.each { |fn, f| pc.class_option(fn.to_sym, f) }
+          c.flags.flags.each { |fn, f| pc.option(fn.to_sym, f) }
           pc.desc short_desc, desc if short_desc && desc
           pc.long_desc long_desc if long_desc
           pc.create_method(cn.to_sym, &c.body)
           aliases.each { |an|
-            c.flags.flags.each { |fn, f| pc.class_option(fn.to_sym, f) }
+            c.flags.flags.each { |fn, f| pc.option(fn.to_sym, f) }
             pc.desc short_desc.gsub(/^\S+(?=\s|$)/, an.gsub(/_/, '-')), desc if short_desc && desc
             pc.long_desc long_desc if long_desc
             pc.dup_method an.to_sym, cn.to_sym
