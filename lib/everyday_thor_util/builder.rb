@@ -210,7 +210,7 @@ module EverydayThorUtil
     end
 
     def build_flags(p, pc, has_children)
-      p.flags.each { |fn, f| has_children ? pc.class_option(fn.to_sym, f) : pc.option(fn.to_sym, f) }
+      p.flags.flags.each { |fn, f| has_children ? pc.class_option(fn.to_sym, f) : pc.option(fn.to_sym, f) }
     end
 
     def build_recurse(p, pc)
