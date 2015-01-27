@@ -204,11 +204,19 @@ module EverydayThorUtil
       rc
     end
 
+    def build_helpers(p, pc)
+      self.global.helpers.helpers.each { |hn, h| pc.no_commands { pc.create_method(hn.to_sym, &h) } }
+      p.helpers.helpers.each { |hn, h| pc.no_commands { pc.create_method(hn.to_sym, &h) } }
+    end
+
+    def build_flags(p, pc, has_children)
+      p.flags.each { |fn, f| has_children ? pc.class_option(fn.to_sym, f) : pc.option(fn.to_sym, f) }
+    end
+
     def build_recurse(p, pc)
       if p.parent.nil?
-        p.flags.flags.each { |fn, f| pc.class_option(fn.to_sym, f) }
-        self.global.helpers.helpers.each { |hn, h| pc.no_commands { pc.create_method(hn.to_sym, &h) } }
-        p.helpers.helpers.each { |hn, h| pc.no_commands { pc.create_method(hn.to_sym, &h) } }
+        build_flags(p, pc, true)
+        build_helpers(p, pc)
       end
       p.commands.commands.each { |cn, c|
         short_desc = c.options[:short_desc]
@@ -218,33 +226,31 @@ module EverydayThorUtil
         if !c.leaf?
           cc = Class.new(Thor)
           cc.namespace cn.to_s
-          self.global.helpers.helpers.each { |hn, h| cc.no_commands { cc.create_method(hn.to_sym, &h) } }
-          c.helpers.helpers.each { |hn, h| pc.no_commands { pc.create_method(hn.to_sym, &h) } }
-          c.flags.flags.each { |fn, f| cc.class_option(fn.to_sym, f) }
+          build_helpers(c, cc)
+          build_flags(c, cc, true)
           build_recurse(c, cc)
-          c.flags.flags.each { |fn, f| pc.class_option(fn.to_sym, f) }
+          build_flags(c, pc, false)
           pc.desc short_desc, desc if short_desc && desc
           pc.long_desc long_desc if long_desc
           pc.subcommand cn, cc
           aliases.each { |an|
             cc2 = Class.new(Thor)
             cc2.namespace an
-            self.global.helpers.helpers.each { |hn, h| cc2.no_commands { cc2.create_method(hn.to_sym, &h) } }
-            c.helpers.helpers.each { |hn, h| pc.no_commands { pc.create_method(hn.to_sym, &h) } }
-            c.flags.flags.each { |fn, f| cc2.class_option(fn.to_sym, f) }
+            build_helpers(c, cc2)
+            build_flags(c, cc2, true)
             build_recurse(c, cc2)
-            c.flags.flags.each { |fn, f| pc.class_option(fn.to_sym, f) }
+            build_flags(c, pc, false)
             pc.desc short_desc.gsub(/^\S+(?=\s|$)/, an.gsub(/_/, '-')), desc if short_desc && desc
             pc.long_desc long_desc if long_desc
             pc.subcommand an, cc2
           } if aliases && !aliases.empty?
         elsif c.body
-          c.flags.flags.each { |fn, f| pc.option(fn.to_sym, f) }
+          build_flags(c, pc, false)
           pc.desc short_desc, desc if short_desc && desc
           pc.long_desc long_desc if long_desc
           pc.create_method(cn.to_sym, &c.body)
           aliases.each { |an|
-            c.flags.flags.each { |fn, f| pc.option(fn.to_sym, f) }
+            build_flags(c, pc, false)
             pc.desc short_desc.gsub(/^\S+(?=\s|$)/, an.gsub(/_/, '-')), desc if short_desc && desc
             pc.long_desc long_desc if long_desc
             pc.dup_method an.to_sym, cn.to_sym
