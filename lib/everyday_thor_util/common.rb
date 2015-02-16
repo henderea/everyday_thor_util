@@ -9,6 +9,25 @@ class Module
 end
 
 module EverydayThorUtil
+  class CommonHelpers
+    class << self
+      def print_debug(option_sym, env_sym, obj, original_method, method, args)
+        debug = if option_sym && (obj.options.has_key?(option_sym.to_s) || obj.options.has_key?(option_sym.to_sym))
+                  obj.options[option_sym.to_sym]
+                elsif env_sym
+                  d = ENV[env_sym.to_s]
+                  d == '1' || d == 1 || d == 'true' || d == 't'
+                end
+        if debug
+          puts "command: #{obj.class.basename2} #{method.gsub(/_/, '-').to_s}"
+          puts "parent_options: #{obj.parent_options.inspect}"
+          puts "options: #{obj.options.inspect}"
+          original_method.parameters.each_with_index { |p, i| puts "#{p[1].to_s}: #{args[i]}" }
+        end
+      end
+    end
+  end
+
   module Common
     def add_debugging(base, option_sym, env_sym)
       methods = base.commands.keys - base.subcommands
@@ -17,18 +36,7 @@ module EverydayThorUtil
           original_method = instance_method(method_name)
           no_commands {
             define_method(method_name) { |*args, &block|
-              debug = if option_sym && (options.has_key?(option_sym.to_s) || options.has_key?(option_sym.to_sym))
-                        options[option_sym.to_sym]
-                      elsif env_sym
-                        d = ENV[env_sym.to_s]
-                        d == '1' || d == 1 || d == 'true' || d == 't'
-                      end
-              if debug
-                puts "command: #{self.class.basename2} #{__method__.gsub(/_/, '-').to_s}"
-                puts "parent_options: #{parent_options.inspect}"
-                puts "options: #{options.inspect}"
-                original_method.parameters.each_with_index { |p, i| puts "#{p[1].to_s}: #{args[i]}" }
-              end
+              EverydayThorUtil::CommonHelpers.print_debug(option_sym, env_sym, self, original_method, __method__, args)
               begin
                 original_method.bind(self).call(*args, &block)
               rescue ArgumentError => e
