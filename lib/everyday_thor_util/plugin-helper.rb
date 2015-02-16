@@ -42,7 +42,7 @@ module EverydayThorUtil
 
       def register_helper_type(helper_symbol)
         register_type(helper_symbol) { |list, parent_class, parent|
-          EverydayThorUtil::SubCommandHelpers.filter_list(list, parent) { |v| v[:options][:global] }.each { |v| parent_class.no_commands { parent_class.create_method v[:options][:name].to_sym, &v[:block] } if v[:block] }
+          EverydayThorUtil::SubCommandHelpers.filter_list(list, parent) { |v| v[:options][:global] }.each { |v| EverydayThorUtil::SubCommandHelpers.add_helper(parent_class, v) }
         }
       end
 
@@ -125,14 +125,22 @@ module EverydayThorUtil
         parent_class.long_desc long_desc if long_desc
       end
 
+      def add_helper(parent_class, v)
+        parent_class.no_commands { parent_class.create_method v[:options][:name].to_sym, &v[:block] } if v[:block]
+      end
+
       def register_print_info_helper(global, helper_symbol, method_name, parent)
         register(helper_symbol, name: (method_name || 'print_info'), global: global, parent: parent) { |meth, &eval_block|
-          meth_obj = self.method(meth)
-          puts "command: #{self.class.basename2} #{meth.to_s}"
-          puts "parent_options: #{parent_options.inspect}"
-          puts "options: #{options.inspect}"
-          meth_obj.parameters.each { |p| puts "#{p[1].to_s}: #{eval_block.call(p[1].to_s)}" } if eval_block
+          EverydayThorUtil::SubCommandHelpers.print_info(meth, &eval_block)
         }
+      end
+
+      def print_info(meth, &eval_block)
+        meth_obj = self.method(meth)
+        puts "command: #{self.class.basename2} #{meth.to_s}"
+        puts "parent_options: #{parent_options.inspect}"
+        puts "options: #{options.inspect}"
+        meth_obj.parameters.each { |p| puts "#{p[1].to_s}: #{eval_block.call(p[1].to_s)}" } if eval_block
       end
     end
   end
