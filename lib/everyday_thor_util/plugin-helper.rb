@@ -21,31 +21,33 @@ module EverydayThorUtil
 
       def register_flag_type(flag_symbol)
         register_type(flag_symbol) { |list, parent_class, parent, has_children|
-          filtered_list = filter_list(list, parent)
-          filtered_list.each { |v|
-            opts            = {}
-            name            = v[:options][:name].to_sym
-            opts[:desc]     = v[:options][:desc] if v[:options][:desc]
-            opts[:banner]   = v[:options][:banner] if v[:options][:banner]
-            opts[:required] = v[:options][:required] if v[:options][:required] && !v[:options][:default]
-            opts[:default]  = v[:options][:default] if v[:options][:default]
-            opts[:type]     = v[:options][:type] if v[:options][:type]
-            opts[:aliases]  = v[:options][:aliases] if v[:options][:aliases]
+          filter_list(list, parent).each { |v|
+            name, opts = map_flag_opts(v)
             has_children ? parent_class.class_option(name, opts) : parent_class.option(name, opts)
           }
         }
       end
 
+      def map_flag_opts(v)
+        opts            = {}
+        name            = v[:options][:name].to_sym
+        opts[:desc]     = v[:options][:desc] if v[:options][:desc]
+        opts[:banner]   = v[:options][:banner] if v[:options][:banner]
+        opts[:required] = v[:options][:required] if v[:options][:required] && !v[:options][:default]
+        opts[:default]  = v[:options][:default] if v[:options][:default]
+        opts[:type]     = v[:options][:type] if v[:options][:type]
+        opts[:aliases]  = v[:options][:aliases] if v[:options][:aliases]
+        return name, opts
+      end
+
       def register_command_type(command_array_symbol, command_symbol, flag_symbol, helper_symbol)
         register_type(command_symbol) { |list, parent_class, parent|
           setup_root(flag_symbol, helper_symbol, parent, parent_class)
-          filtered_list = filter_list(list, parent || nil)
-          filtered_list.each { |v|
+          filter_list(list, parent).each { |v|
             aliases, desc, id, long_desc, name, short_desc = extract_command_info(v)
-            if id && name
-              (list.any? { |v2| v2[:options][:parent] == id } && create_cmd_class_and_aliases(aliases, command_array_symbol, command_symbol, desc, flag_symbol, helper_symbol, id, long_desc, name, parent_class, short_desc)) ||
-                  (v[:block] && create_cmd_method_and_aliases(aliases, desc, flag_symbol, id, long_desc, name, parent_class, short_desc, v))
-            end
+            id && name &&
+                ((list.any? { |v2| v2[:options][:parent] == id } && create_cmd_class_and_aliases(aliases, command_array_symbol, command_symbol, desc, flag_symbol, helper_symbol, id, long_desc, name, parent_class, short_desc)) ||
+                    (v[:block] && create_cmd_method_and_aliases(aliases, desc, flag_symbol, id, long_desc, name, parent_class, short_desc, v)))
           }
         }
       end
@@ -75,8 +77,8 @@ module EverydayThorUtil
         return v[:options][:aliases], v[:options][:desc], v[:options][:id], v[:options][:long_desc], v[:options][:name], v[:options][:short_desc]
       end
 
-      def filter_list(list, parent)
-        list.select { |v| v[:options][:parent] == parent }
+      def filter_list(list, parent, &extra)
+        list.select { |v| v[:options][:parent] == parent || (extra && extra.call(v)) }
       end
 
       def setup_root(flag_symbol, helper_symbol, parent, parent_class)
@@ -102,27 +104,27 @@ module EverydayThorUtil
 
       def register_helper_type(helper_symbol)
         register_type(helper_symbol) { |list, parent_class, parent|
-          filtered_list = list.select { |v| v[:options][:parent] == parent || v[:options][:global] }
-          filtered_list.each { |v|
-            name = v[:options][:name].to_sym
-            parent_class.no_commands { parent_class.create_method name, &v[:block] } if v[:block]
-          }
+          filter_list(list, parent) { |v| v[:options][:global] }.each { |v| parent_class.no_commands { parent_class.create_method v[:options][:name].to_sym, &v[:block] } if v[:block] }
         }
       end
 
       def def_helper(helper_symbol, which_helper, method_name = nil, global = true, parent = nil)
         case (which_helper)
           when :print_info
-            register(helper_symbol, name: (method_name || 'print_info'), global: global, parent: parent) { |meth, &eval_block|
-              meth_obj = self.method(meth)
-              puts "command: #{self.class.basename2} #{meth.to_s}"
-              puts "parent_options: #{parent_options.inspect}"
-              puts "options: #{options.inspect}"
-              meth_obj.parameters.each { |p| puts "#{p[1].to_s}: #{eval_block.call(p[1].to_s)}" } if eval_block
-            }
+            register_print_info_helper(global, helper_symbol, method_name, parent)
           else
             puts "Unknown helper #{which_helper}"
         end
+      end
+
+      def register_print_info_helper(global, helper_symbol, method_name, parent)
+        register(helper_symbol, name: (method_name || 'print_info'), global: global, parent: parent) { |meth, &eval_block|
+          meth_obj = self.method(meth)
+          puts "command: #{self.class.basename2} #{meth.to_s}"
+          puts "parent_options: #{parent_options.inspect}"
+          puts "options: #{options.inspect}"
+          meth_obj.parameters.each { |p| puts "#{p[1].to_s}: #{eval_block.call(p[1].to_s)}" } if eval_block
+        }
       end
     end
   end
