@@ -14,7 +14,12 @@ module EverydayThorUtil
     class << self
       def def_types(command_array_symbol, flag_symbol, command_symbol, helper_symbol = nil)
         register_variable command_array_symbol, []
+        register_flag_type(flag_symbol)
+        register_command_type(command_array_symbol, command_symbol, flag_symbol, helper_symbol)
+        register_helper_type(helper_symbol) unless helper_symbol.nil?
+      end
 
+      def register_flag_type(flag_symbol)
         register_type(flag_symbol) { |list, parent_class, parent, has_children|
           filtered_list = list.select { |v| v[:options][:parent] == parent }
           filtered_list.each { |v|
@@ -29,7 +34,9 @@ module EverydayThorUtil
             has_children ? parent_class.class_option(name, opts) : parent_class.option(name, opts)
           }
         }
+      end
 
+      def register_command_type(command_array_symbol, command_symbol, flag_symbol, helper_symbol)
         register_type(command_symbol) { |list, parent_class, parent|
           Plugins.get helper_symbol, parent_class, nil unless parent || helper_symbol.nil?
           Plugins.get flag_symbol, parent_class, nil, true unless parent
@@ -48,52 +55,48 @@ module EverydayThorUtil
                 unless command_ids.include?(id)
                   command_ids << id
                   Plugins.set_var command_array_symbol, command_ids
-                  command_class = Class.new(Thor)
-                  command_class.namespace name
-                  Plugins.get helper_symbol, command_class, id unless helper_symbol.nil?
-                  Plugins.get flag_symbol, command_class, id, true
-                  Plugins.get command_symbol, command_class, id
-                  Plugins.get flag_symbol, parent_class, id, false
-                  parent_class.desc short_desc, desc if short_desc && desc
-                  parent_class.long_desc long_desc if long_desc
-                  parent_class.subcommand name, command_class
+                  create_command_class(command_symbol, desc, flag_symbol, helper_symbol, id, long_desc, name, parent_class, short_desc)
                   aliases.each { |a|
-                    command_class2 = Class.new(Thor)
-                    command_class2.namespace a
-                    Plugins.get helper_symbol, command_class2, id unless helper_symbol.nil?
-                    Plugins.get flag_symbol, command_class2, id, true
-                    Plugins.get command_symbol, command_class2, id
-                    Plugins.get flag_symbol, parent_class, id, false
-                    parent_class.desc short_desc.gsub(/^\S+(?=\s|$)/, a.gsub(/_/, '-')), desc if short_desc && desc
-                    parent_class.long_desc long_desc if long_desc
-                    parent_class.subcommand a, command_class2
+                    create_command_class(command_symbol, desc, flag_symbol, helper_symbol, id, long_desc, a, parent_class, short_desc.gsub(/^\S+(?=\s|$)/, a.gsub(/_/, '-')))
                   } if aliases
                 end
               elsif v[:block]
-                Plugins.get flag_symbol, parent_class, id, false
-                parent_class.desc short_desc, desc if short_desc && desc
-                parent_class.long_desc long_desc if long_desc
+                setup_command(desc, flag_symbol, id, long_desc, parent_class, short_desc)
                 parent_class.create_method(name.to_sym, &v[:block])
                 aliases.each { |a|
-                  Plugins.get flag_symbol, parent_class, id, false
-                  parent_class.desc short_desc.gsub(/^\S+(?=\s|$)/, a.gsub(/_/, '-')), desc if short_desc && desc
-                  parent_class.long_desc long_desc if long_desc
+                  setup_command(desc, flag_symbol, id, long_desc, parent_class, short_desc)
                   parent_class.dup_method a.to_sym, name.to_sym
                 } if aliases
               end
             end
           }
         }
+      end
 
-        unless helper_symbol.nil?
-          register_type(helper_symbol) { |list, parent_class, parent|
-            filtered_list = list.select { |v| v[:options][:parent] == parent || v[:options][:global] }
-            filtered_list.each { |v|
-              name = v[:options][:name].to_sym
-              parent_class.no_commands { parent_class.create_method name, &v[:block] } if v[:block]
-            }
+      def create_command_class(command_symbol, desc, flag_symbol, helper_symbol, id, long_desc, name, parent_class, short_desc)
+        command_class = Class.new(Thor)
+        command_class.namespace name
+        Plugins.get helper_symbol, command_class, id unless helper_symbol.nil?
+        Plugins.get flag_symbol, command_class, id, true
+        Plugins.get command_symbol, command_class, id
+        setup_command(desc, flag_symbol, id, long_desc, parent_class, short_desc)
+        parent_class.subcommand name, command_class
+      end
+
+      def setup_command(desc, flag_symbol, id, long_desc, parent_class, short_desc)
+        Plugins.get flag_symbol, parent_class, id, false
+        parent_class.desc short_desc, desc if short_desc && desc
+        parent_class.long_desc long_desc if long_desc
+      end
+
+      def register_helper_type(helper_symbol)
+        register_type(helper_symbol) { |list, parent_class, parent|
+          filtered_list = list.select { |v| v[:options][:parent] == parent || v[:options][:global] }
+          filtered_list.each { |v|
+            name = v[:options][:name].to_sym
+            parent_class.no_commands { parent_class.create_method name, &v[:block] } if v[:block]
           }
-        end
+        }
       end
 
       def def_helper(helper_symbol, which_helper, method_name = nil, global = true, parent = nil)
