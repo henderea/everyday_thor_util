@@ -21,7 +21,7 @@ module EverydayThorUtil
 
       def register_flag_type(flag_symbol)
         register_type(flag_symbol) { |list, parent_class, parent, has_children|
-          filtered_list = list.select { |v| v[:options][:parent] == parent }
+          filtered_list = filter_list(list, parent)
           filtered_list.each { |v|
             opts            = {}
             name            = v[:options][:name].to_sym
@@ -38,39 +38,50 @@ module EverydayThorUtil
 
       def register_command_type(command_array_symbol, command_symbol, flag_symbol, helper_symbol)
         register_type(command_symbol) { |list, parent_class, parent|
-          Plugins.get helper_symbol, parent_class, nil unless parent || helper_symbol.nil?
-          Plugins.get flag_symbol, parent_class, nil, true unless parent
-          filtered_list = list.select { |v| v[:options][:parent] == parent || nil }
+          setup_root(flag_symbol, helper_symbol, parent, parent_class)
+          filtered_list = filter_list(list, parent || nil)
           filtered_list.each { |v|
-            id         = v[:options][:id]
-            short_desc = v[:options][:short_desc]
-            desc       = v[:options][:desc]
-            long_desc  = v[:options][:long_desc]
-            name       = v[:options][:name]
-            aliases    = v[:options][:aliases]
+            aliases, desc, id, long_desc, name, short_desc = extract_command_info(v)
             if id && name
-              has_children = list.any? { |v2| v2[:options][:parent] == id }
-              if has_children
-                command_ids = Plugins.get_var command_array_symbol
-                unless command_ids.include?(id)
-                  command_ids << id
-                  Plugins.set_var command_array_symbol, command_ids
-                  create_command_class(command_symbol, desc, flag_symbol, helper_symbol, id, long_desc, name, parent_class, short_desc)
-                  aliases.each { |a|
-                    create_command_class(command_symbol, desc, flag_symbol, helper_symbol, id, long_desc, a, parent_class, short_desc.gsub(/^\S+(?=\s|$)/, a.gsub(/_/, '-')))
-                  } if aliases
-                end
-              elsif v[:block]
-                setup_command(desc, flag_symbol, id, long_desc, parent_class, short_desc)
-                parent_class.create_method(name.to_sym, &v[:block])
-                aliases.each { |a|
-                  setup_command(desc, flag_symbol, id, long_desc, parent_class, short_desc)
-                  parent_class.dup_method a.to_sym, name.to_sym
-                } if aliases
-              end
+              (list.any? { |v2| v2[:options][:parent] == id } && create_cmd_class_and_aliases(aliases, command_array_symbol, command_symbol, desc, flag_symbol, helper_symbol, id, long_desc, name, parent_class, short_desc)) ||
+                  (v[:block] && create_cmd_method_and_aliases(aliases, desc, flag_symbol, id, long_desc, name, parent_class, short_desc, v))
             end
           }
         }
+      end
+
+      def create_cmd_class_and_aliases(aliases, command_array_symbol, command_symbol, desc, flag_symbol, helper_symbol, id, long_desc, name, parent_class, short_desc)
+        command_ids = Plugins.get_var command_array_symbol
+        unless command_ids.include?(id)
+          command_ids << id
+          Plugins.set_var command_array_symbol, command_ids
+          create_command_class(command_symbol, desc, flag_symbol, helper_symbol, id, long_desc, name, parent_class, short_desc)
+          aliases.each { |a| create_command_class(command_symbol, desc, flag_symbol, helper_symbol, id, long_desc, a, parent_class, short_desc.gsub(/^\S+(?=\s|$)/, a.gsub(/_/, '-'))) } if aliases
+        end
+        true
+      end
+
+      def create_cmd_method_and_aliases(aliases, desc, flag_symbol, id, long_desc, name, parent_class, short_desc, v)
+        setup_command(desc, flag_symbol, id, long_desc, parent_class, short_desc)
+        parent_class.create_method(name.to_sym, &v[:block])
+        aliases.each { |a|
+          setup_command(desc, flag_symbol, id, long_desc, parent_class, short_desc)
+          parent_class.dup_method a.to_sym, name.to_sym
+        } if aliases
+        true
+      end
+
+      def extract_command_info(v)
+        return v[:options][:aliases], v[:options][:desc], v[:options][:id], v[:options][:long_desc], v[:options][:name], v[:options][:short_desc]
+      end
+
+      def filter_list(list, parent)
+        list.select { |v| v[:options][:parent] == parent }
+      end
+
+      def setup_root(flag_symbol, helper_symbol, parent, parent_class)
+        Plugins.get helper_symbol, parent_class, nil unless parent || helper_symbol.nil?
+        Plugins.get flag_symbol, parent_class, nil, true unless parent
       end
 
       def create_command_class(command_symbol, desc, flag_symbol, helper_symbol, id, long_desc, name, parent_class, short_desc)
