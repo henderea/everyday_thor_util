@@ -33,9 +33,7 @@ module EverydayThorUtil
           EverydayThorUtil::SubCommandHelpers.setup_root(flag_symbol, helper_symbol, parent, parent_class)
           EverydayThorUtil::SubCommandHelpers.filter_list(list, parent).each { |v|
             aliases, desc, id, long_desc, name, short_desc = EverydayThorUtil::SubCommandHelpers.extract_command_info(v)
-            id && name &&
-                ((list.any? { |v2| v2[:options][:parent] == id } && EverydayThorUtil::SubCommandHelpers.create_cmd_class_and_aliases(aliases, command_array_symbol, command_symbol, desc, flag_symbol, helper_symbol, id, long_desc, name, parent_class, short_desc)) ||
-                    (v[:block] && EverydayThorUtil::SubCommandHelpers.create_cmd_method_and_aliases(aliases, desc, flag_symbol, id, long_desc, name, parent_class, short_desc, v)))
+            id && name && EverydayThorUtil::SubCommandHelpers.handle_command(command_array_symbol, command_symbol, flag_symbol, helper_symbol, list, parent_class, aliases, desc, id, long_desc, name, short_desc, &v[:block])
           }
         }
       end
@@ -97,9 +95,9 @@ module EverydayThorUtil
       true
     end
 
-    def create_cmd_method_and_aliases(aliases, desc, flag_symbol, id, long_desc, name, parent_class, short_desc, v)
+    def create_cmd_method_and_aliases(aliases, desc, flag_symbol, id, long_desc, name, parent_class, short_desc, &block)
       setup_command(desc, flag_symbol, id, long_desc, parent_class, short_desc)
-      parent_class.create_method(name.to_sym, &v[:block])
+      parent_class.create_method(name.to_sym, &block)
       aliases.each { |a|
         setup_command(desc, flag_symbol, id, long_desc, parent_class, short_desc)
         parent_class.dup_method a.to_sym, name.to_sym
@@ -130,6 +128,19 @@ module EverydayThorUtil
       Plugins.get flag_symbol, parent_class, id, false
       parent_class.desc short_desc, desc if short_desc && desc
       parent_class.long_desc long_desc if long_desc
+    end
+
+    def handle_command(command_array_symbol, command_symbol, flag_symbol, helper_symbol, list, parent_class, aliases, desc, id, long_desc, name, short_desc, &block)
+      handle_command_class(command_array_symbol, command_symbol, flag_symbol, helper_symbol, list, parent_class, aliases, desc, id, long_desc, name, short_desc) ||
+          handle_command_method(aliases, desc, flag_symbol, id, long_desc, name, parent_class, short_desc, &block)
+    end
+
+    def handle_command_class(command_array_symbol, command_symbol, flag_symbol, helper_symbol, list, parent_class, aliases, desc, id, long_desc, name, short_desc)
+      (list.any? { |v2| v2[:options][:parent] == id } && create_cmd_class_and_aliases(aliases, command_array_symbol, command_symbol, desc, flag_symbol, helper_symbol, id, long_desc, name, parent_class, short_desc))
+    end
+
+    def handle_command_method(aliases, desc, flag_symbol, id, long_desc, name, parent_class, short_desc, &block)
+      (block && create_cmd_method_and_aliases(aliases, desc, flag_symbol, id, long_desc, name, parent_class, short_desc, &block))
     end
   end
   module SubCommandHelperHelpers
