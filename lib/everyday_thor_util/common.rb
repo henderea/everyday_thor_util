@@ -35,10 +35,11 @@ module EverydayThorUtil
       end
 
       def should_debug?(env_sym, obj, option_sym)
-        should_use_option_sym?(obj, option_sym) ? obj.options[option_sym.to_sym] : (env_sym && -> {
-          d = ENV[env_sym.to_s]
-          d == '1' || d == 1 || d == 'true' || d == 't'
-        }.call)
+        should_use_option_sym?(obj, option_sym) ? obj.options[option_sym.to_sym] : (env_sym && env_val_true(ENV[env_sym.to_s]))
+      end
+
+      def env_val_true(d)
+        d == '1' || d == 1 || d == 'true' || d == 't'
       end
 
       def should_use_option_sym?(obj, option_sym)
