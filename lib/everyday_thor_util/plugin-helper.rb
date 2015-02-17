@@ -32,8 +32,7 @@ module EverydayThorUtil
         register_type(command_symbol) { |list, parent_class, parent|
           EverydayThorUtil::SubCommandHelpers.setup_root(flag_symbol, helper_symbol, parent, parent_class)
           EverydayThorUtil::SubCommandHelpers.filter_list(list, parent).each { |v|
-            aliases, desc, id, long_desc, name, short_desc = EverydayThorUtil::SubCommandHelpers.extract_command_info(v)
-            id && name && EverydayThorUtil::SubCommandHelpers.handle_command(command_array_symbol, command_symbol, flag_symbol, helper_symbol, list, parent_class, aliases, desc, id, long_desc, name, short_desc, &v[:block])
+            EverydayThorUtil::SubCommandHelpers.handle_command(command_array_symbol, command_symbol, flag_symbol, helper_symbol, parent_class, list, v)
           }
         }
       end
@@ -130,9 +129,10 @@ module EverydayThorUtil
       parent_class.long_desc long_desc if long_desc
     end
 
-    def handle_command(command_array_symbol, command_symbol, flag_symbol, helper_symbol, list, parent_class, aliases, desc, id, long_desc, name, short_desc, &block)
-      handle_command_class(command_array_symbol, command_symbol, flag_symbol, helper_symbol, list, parent_class, aliases, desc, id, long_desc, name, short_desc) ||
-          handle_command_method(aliases, desc, flag_symbol, id, long_desc, name, parent_class, short_desc, &block)
+    def handle_command(command_array_symbol, command_symbol, flag_symbol, helper_symbol, parent_class, list, v)
+      aliases, desc, id, long_desc, name, short_desc = extract_command_info(v)
+      id && name && (handle_command_class(command_array_symbol, command_symbol, flag_symbol, helper_symbol, list, parent_class, aliases, desc, id, long_desc, name, short_desc) ||
+          handle_command_method(aliases, desc, flag_symbol, id, long_desc, name, parent_class, short_desc, &v[:block]))
     end
 
     def handle_command_class(command_array_symbol, command_symbol, flag_symbol, helper_symbol, list, parent_class, aliases, desc, id, long_desc, name, short_desc)
