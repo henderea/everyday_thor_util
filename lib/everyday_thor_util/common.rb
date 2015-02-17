@@ -35,12 +35,14 @@ module EverydayThorUtil
       end
 
       def should_debug?(env_sym, obj, option_sym)
-        if option_sym && (obj.options.has_key?(option_sym.to_s) || obj.options.has_key?(option_sym.to_sym))
-          obj.options[option_sym.to_sym]
-        elsif env_sym
+        should_use_option_sym?(obj, option_sym) ? obj.options[option_sym.to_sym] : (env_sym && -> {
           d = ENV[env_sym.to_s]
           d == '1' || d == 1 || d == 'true' || d == 't'
-        end
+        }.call)
+      end
+
+      def should_use_option_sym?(obj, option_sym)
+        option_sym && (obj.options.has_key?(option_sym.to_s) || obj.options.has_key?(option_sym.to_sym))
       end
 
       def call_original_method(args, base, block, method_name, original_method)
