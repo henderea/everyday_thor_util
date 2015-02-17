@@ -139,15 +139,13 @@ module EverydayThorUtil
 
     def register_print_info_helper(global, helper_symbol, method_name, parent)
       register(helper_symbol, name: (method_name || 'print_info'), global: global, parent: parent) { |meth, &eval_block|
-        EverydayThorUtil::SubCommandHelpers.print_info(meth, &eval_block)
+        EverydayThorUtil::SubCommandHelpers.print_info(self, meth, &eval_block)
       }
     end
 
-    def print_info(meth, &eval_block)
-      meth_obj = self.method(meth)
-      puts "command: #{self.class.basename2} #{meth.to_s}"
-      puts "parent_options: #{parent_options.inspect}"
-      puts "options: #{options.inspect}"
+    def print_info(obj, meth, &eval_block)
+      EverydayThorUtil::CommonHelpers.print_base_debug(meth, obj)
+      meth_obj = obj.method(meth)
       meth_obj.parameters.each { |p| puts "#{p[1].to_s}: #{eval_block.call(p[1].to_s)}" } if eval_block
     end
   end

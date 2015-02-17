@@ -11,13 +11,19 @@ end
 module EverydayThorUtil
   class CommonHelpers
     class << self
-      def print_debug(option_sym, env_sym, obj, original_method, method, args)
-        if should_debug?(env_sym, obj, option_sym)
-          puts "command: #{obj.class.basename2} #{method.gsub(/_/, '-').to_s}"
-          puts "parent_options: #{obj.parent_options.inspect}"
-          puts "options: #{obj.options.inspect}"
-          original_method.parameters.each_with_index { |p, i| puts "#{p[1].to_s}: #{args[i]}" }
-        end
+      def print_debug_if_should(option_sym, env_sym, obj, original_method, method, args)
+        print_all_debug(args, method, obj, original_method) if should_debug?(env_sym, obj, option_sym)
+      end
+
+      def print_all_debug(args, method, obj, original_method)
+        print_base_debug(method, obj)
+        original_method.parameters.each_with_index { |p, i| puts "#{p[1].to_s}: #{args[i]}" }
+      end
+
+      def print_base_debug(method, obj)
+        puts "command: #{obj.class.basename2} #{method.gsub(/_/, '-').to_s}"
+        puts "parent_options: #{obj.parent_options.inspect}"
+        puts "options: #{obj.options.inspect}"
       end
 
       def should_debug?(env_sym, obj, option_sym)
@@ -47,7 +53,7 @@ module EverydayThorUtil
           original_method = instance_method(method_name)
           no_commands {
             define_method(method_name) { |*args, &block|
-              EverydayThorUtil::CommonHelpers.print_debug(option_sym, env_sym, self, original_method, __method__, args)
+              EverydayThorUtil::CommonHelpers.print_debug_if_should(option_sym, env_sym, self, original_method, __method__, args)
               EverydayThorUtil::CommonHelpers.call_original_method(args, base, block, method_name, original_method)
             }
           }

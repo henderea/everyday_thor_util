@@ -6,9 +6,9 @@ module EverydayThorUtil
     class BuilderCommand
       def initialize(parent = nil, options = {}, &block)
         @aliases = options.delete(:aliases) if options.has_key?(:aliases) && !parent.nil?
-        @parent = parent
+        @parent  = parent
         @options = options
-        @body   = block
+        @body    = block
       end
 
       def parent
@@ -213,9 +213,9 @@ module EverydayThorUtil
       end
       p.commands.commands.each { |cn, c|
         short_desc = c.options[:short_desc]
-        desc      = c.options[:desc]
-        long_desc = c.options[:long_desc]
-        aliases   = c.aliases
+        desc       = c.options[:desc]
+        long_desc  = c.options[:long_desc]
+        aliases    = c.aliases
         if !c.leaf?
           cc = Class.new(Thor)
           cc.namespace cn.to_s
