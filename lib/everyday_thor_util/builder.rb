@@ -212,46 +212,45 @@ module EverydayThorUtil
         build_helpers(p, pc)
       end
       p.commands.commands.each { |cn, c|
-        short_desc = c.options[:short_desc]
-        desc       = c.options[:desc]
-        long_desc  = c.options[:long_desc]
-        aliases    = c.aliases
+        aliases, desc, long_desc, short_desc = extract_command_info(c)
         if !c.leaf?
-          cc = Class.new(Thor)
-          cc.namespace cn.to_s
-          build_helpers(c, cc)
-          build_flags(c, cc, true)
-          build_recurse(c, cc)
-          build_flags(c, pc, false)
-          pc.desc short_desc, desc if short_desc && desc
-          pc.long_desc long_desc if long_desc
-          pc.subcommand cn, cc
-          aliases.each { |an|
-            cc2 = Class.new(Thor)
-            cc2.namespace an
-            build_helpers(c, cc2)
-            build_flags(c, cc2, true)
-            build_recurse(c, cc2)
-            build_flags(c, pc, false)
-            pc.desc short_desc.gsub(/^\S+(?=\s|$)/, an.gsub(/_/, '-')), desc if short_desc && desc
-            pc.long_desc long_desc if long_desc
-            pc.subcommand an, cc2
-          } if aliases && !aliases.empty?
+          create_command_class(c, pc, cn, desc, long_desc, short_desc)
+          aliases.each { |an| create_command_class(c, pc, an, desc, long_desc, short_desc.gsub(/^\S+(?=\s|$)/, an.gsub(/_/, '-'))) } if aliases && !aliases.empty?
         elsif c.body
-          build_flags(c, pc, false)
-          pc.desc short_desc, desc if short_desc && desc
-          pc.long_desc long_desc if long_desc
+          setup_command(c, pc, desc, long_desc, short_desc)
           pc.create_method(cn.to_sym, &c.body)
           aliases.each { |an|
-            build_flags(c, pc, false)
-            pc.desc short_desc.gsub(/^\S+(?=\s|$)/, an.gsub(/_/, '-')), desc if short_desc && desc
-            pc.long_desc long_desc if long_desc
+            setup_command(c, pc, desc, long_desc, short_desc)
             pc.dup_method an.to_sym, cn.to_sym
           } if aliases
         end
       }
     end
 
-    private :build_recurse
+    def setup_command(c, pc, desc, long_desc, short_desc)
+      build_flags(c, pc, false)
+      pc.desc short_desc, desc if short_desc && desc
+      pc.long_desc long_desc if long_desc
+    end
+
+    def create_command_class(c, pc, cn, desc, long_desc, short_desc)
+      cc = Class.new(Thor)
+      cc.namespace cn.to_s
+      build_helpers(c, cc)
+      build_flags(c, cc, true)
+      build_recurse(c, cc)
+      setup_command(c, pc, desc, long_desc, short_desc)
+      pc.subcommand cn, cc
+    end
+
+    def extract_command_info(c)
+      short_desc = c.options[:short_desc]
+      desc       = c.options[:desc]
+      long_desc  = c.options[:long_desc]
+      aliases    = c.aliases
+      return aliases, desc, long_desc, short_desc
+    end
+
+    private :build_helpers, :build_flags, :build_recurse, :setup_command, :create_command_class, :extract_command_info
   end
 end
