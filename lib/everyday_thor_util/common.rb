@@ -8,6 +8,14 @@ class Module
   end
 end
 
+class Thor
+  class << self
+    def define_non_command(method_name, &block)
+      no_commands { define_method(method_name, &block) }
+    end
+  end
+end
+
 module EverydayThorUtil
   class CommonHelpers
     class << self
@@ -46,16 +54,14 @@ module EverydayThorUtil
       def define_debug_wrapper(base, env_sym, method_name, option_sym)
         base.class_eval {
           original_method = instance_method(method_name)
-          no_commands {
-            define_method(method_name) { |*args, &block|
-              EverydayThorUtil::CommonHelpers.debug_and_call_original(args, self, block, env_sym, method_name, option_sym, original_method, __method__)
-            }
+          define_non_command(method_name) { |*args, &block|
+            EverydayThorUtil::CommonHelpers.debug_and_call_original(args, self, env_sym, method_name, option_sym, original_method, &block)
           }
         }
       end
 
-      def debug_and_call_original(args, base, block, env_sym, method_name, option_sym, original_method, method)
-        print_debug_if_should(option_sym, env_sym, base, original_method, method, args)
+      def debug_and_call_original(args, base, env_sym, method_name, option_sym, original_method, &block)
+        print_debug_if_should(option_sym, env_sym, base, original_method, method_name, args)
         call_original_method(args, base, block, method_name, original_method)
       end
     end
