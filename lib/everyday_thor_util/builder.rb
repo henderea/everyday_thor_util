@@ -207,30 +207,47 @@ module EverydayThorUtil
     end
 
     def build_recurse(p, pc)
-      if p.parent.nil?
-        build_flags(p, pc, true)
-        build_helpers(p, pc)
-      end
+      setup_root(p, pc) if p.parent.nil?
       p.commands.commands.each { |cn, c|
         aliases, desc, long_desc, short_desc = extract_command_info(c)
-        if !c.leaf?
-          create_command_class(c, pc, cn, desc, long_desc, short_desc)
-          aliases.each { |an| create_command_class(c, pc, an, desc, long_desc, short_desc.gsub(/^\S+(?=\s|$)/, an.gsub(/_/, '-'))) } if aliases && !aliases.empty?
-        elsif c.body
-          setup_command(c, pc, desc, long_desc, short_desc)
-          pc.create_method(cn.to_sym, &c.body)
-          aliases.each { |an|
-            setup_command(c, pc, desc, long_desc, short_desc)
-            pc.dup_method an.to_sym, cn.to_sym
-          } if aliases
-        end
+        handle_command_class(c, pc, cn, aliases, desc, long_desc, short_desc) ||
+            handle_command_method(c, pc, cn, aliases, desc, long_desc, short_desc)
       }
+    end
+
+    def setup_root(p, pc)
+      build_flags(p, pc, true)
+      build_helpers(p, pc)
     end
 
     def setup_command(c, pc, desc, long_desc, short_desc)
       build_flags(c, pc, false)
       pc.desc short_desc, desc if short_desc && desc
       pc.long_desc long_desc if long_desc
+    end
+
+    def handle_command_class(c, pc, cn, aliases, desc, long_desc, short_desc)
+      !c.leaf? && create_cmd_class_and_aliases(c, pc, cn, aliases, desc, long_desc, short_desc)
+    end
+
+    def handle_command_method(c, pc, cn, aliases, desc, long_desc, short_desc)
+      c.body && create_cmd_method_and_aliases(c, pc, cn, aliases, desc, long_desc, short_desc)
+    end
+
+    def create_cmd_class_and_aliases(c, pc, cn, aliases, desc, long_desc, short_desc)
+      create_command_class(c, pc, cn, desc, long_desc, short_desc)
+      aliases.each { |an| create_command_class(c, pc, an, desc, long_desc, short_desc.gsub(/^\S+(?=\s|$)/, an.gsub(/_/, '-'))) } if aliases && !aliases.empty?
+      true
+    end
+
+    def create_cmd_method_and_aliases(c, pc, cn, aliases, desc, long_desc, short_desc)
+      setup_command(c, pc, desc, long_desc, short_desc)
+      pc.create_method(cn.to_sym, &c.body)
+      aliases.each { |an|
+        setup_command(c, pc, desc, long_desc, short_desc)
+        pc.dup_method an.to_sym, cn.to_sym
+      } if aliases
+      true
     end
 
     def create_command_class(c, pc, cn, desc, long_desc, short_desc)
@@ -251,6 +268,6 @@ module EverydayThorUtil
       return aliases, desc, long_desc, short_desc
     end
 
-    private :build_helpers, :build_flags, :build_recurse, :setup_command, :create_command_class, :extract_command_info
+    private :build_helpers, :build_flags, :build_recurse, :setup_root, :setup_command, :handle_command_class, :handle_command_method, :create_command_class, :extract_command_info
   end
 end
