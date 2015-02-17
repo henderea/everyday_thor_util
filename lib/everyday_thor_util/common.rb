@@ -42,23 +42,29 @@ module EverydayThorUtil
           base.handle_argument_error(base.commands[method_name], e, args, original_method.arity)
         end
       end
+
+      def define_debug_wrapper(base, env_sym, method_name, option_sym)
+        base.class_eval {
+          original_method = instance_method(method_name)
+          no_commands {
+            define_method(method_name) { |*args, &block|
+              EverydayThorUtil::CommonHelpers.debug_and_call_original(args, self, block, env_sym, method_name, option_sym, original_method, __method__)
+            }
+          }
+        }
+      end
+
+      def debug_and_call_original(args, base, block, env_sym, method_name, option_sym, original_method, method)
+        print_debug_if_should(option_sym, env_sym, base, original_method, method, args)
+        call_original_method(args, base, block, method_name, original_method)
+      end
     end
   end
 
   module Common
     def add_debugging(base, option_sym, env_sym)
       methods = base.commands.keys - base.subcommands
-      base.class_eval {
-        methods.each { |method_name|
-          original_method = instance_method(method_name)
-          no_commands {
-            define_method(method_name) { |*args, &block|
-              EverydayThorUtil::CommonHelpers.print_debug_if_should(option_sym, env_sym, self, original_method, __method__, args)
-              EverydayThorUtil::CommonHelpers.call_original_method(args, base, block, method_name, original_method)
-            }
-          }
-        }
-      }
+      methods.each { |method_name| EverydayThorUtil::CommonHelpers.define_debug_wrapper(base, env_sym, method_name, option_sym) }
       base.subcommand_classes.values.each { |c| add_debugging(c, option_sym, env_sym) }
     end
   end
