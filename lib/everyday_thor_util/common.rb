@@ -48,7 +48,7 @@ module EverydayThorUtil
 
       def call_original_method(args, base, block, method_name, original_method)
         begin
-          original_method.bind(self).call(*args, &block)
+          original_method.bind(base).call(*args, &block)
         rescue ArgumentError => e
           base.handle_argument_error(base.commands[method_name], e, args, original_method.arity)
         end

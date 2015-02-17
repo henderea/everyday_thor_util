@@ -53,13 +53,6 @@ module EverydayThorUtil
       end
     end
   end
-
-  class SubCommandHelpers
-    extend EverydayThorUtil::SubCommandCommonHelpers
-    extend EverydayThorUtil::SubCommandFlagHelpers
-    extend EverydayThorUtil::SubCommandCommandHelpers
-    extend EverydayThorUtil::SubCommandHelperHelpers
-  end
   module SubCommandCommonHelpers
     def filter_list(list, parent, &extra)
       list.select { |v| v[:options][:parent] == parent || (extra && extra.call(v)) }
@@ -159,5 +152,12 @@ module EverydayThorUtil
       meth_obj = obj.method(meth)
       meth_obj.parameters.each { |p| puts "#{p[1].to_s}: #{eval_block.call(p[1].to_s)}" } if eval_block
     end
+  end
+  class SubCommandHelpers
+    extend Plugin
+    extend EverydayThorUtil::SubCommandCommonHelpers
+    extend EverydayThorUtil::SubCommandFlagHelpers
+    extend EverydayThorUtil::SubCommandCommandHelpers
+    extend EverydayThorUtil::SubCommandHelperHelpers
   end
 end
