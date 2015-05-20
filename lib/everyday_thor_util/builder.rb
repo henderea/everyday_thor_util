@@ -244,7 +244,7 @@ module EverydayThorUtil
       setup_command(c, pc, desc, long_desc, short_desc)
       pc.create_method(cn.to_sym, &c.body)
       aliases.each { |an|
-        setup_command(c, pc, desc, long_desc, short_desc)
+        setup_command(c, pc, desc, long_desc, short_desc.gsub(/^\S+(?=\s|$)/, an.gsub(/_/, '-')))
         pc.dup_method an.to_sym, cn.to_sym
       } if aliases
       true

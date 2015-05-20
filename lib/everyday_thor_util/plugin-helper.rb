@@ -91,7 +91,7 @@ module EverydayThorUtil
       setup_command(desc, flag_symbol, id, long_desc, parent_class, short_desc)
       parent_class.create_method(name.to_sym, &block)
       aliases.each { |a|
-        setup_command(desc, flag_symbol, id, long_desc, parent_class, short_desc)
+        setup_command(desc, flag_symbol, id, long_desc, parent_class, short_desc.gsub(/^\S+(?=\s|$)/, a.gsub(/_/, '-')))
         parent_class.dup_method a.to_sym, name.to_sym
       } if aliases
       true
