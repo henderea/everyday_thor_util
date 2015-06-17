@@ -1,0 +1,26 @@
+PATH
+  remote: .
+  specs:
+    everyday_thor_util (2.0.5)
+      everyday-plugins (~> 1.2)
+      thor (~> 0.19)
+
+GEM
+  remote: https://rubygems.org/
+  specs:
+    everyday-cli-utils (1.8.2)
+    everyday-plugins (1.2.0)
+      everyday-cli-utils (~> 1.7)
+    rake (10.4.2)
+    thor (0.19.1)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  bundler (~> 1.10, >= 1.10.4)
+  everyday_thor_util!
+  rake (~> 10.4)
+
+BUNDLED WITH
+   1.10.4
