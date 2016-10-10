@@ -50,7 +50,7 @@ module EverydayThorUtil
         begin
           original_method.bind(base).call(*args, &block)
         rescue ArgumentError => e
-          base.handle_argument_error(base.commands[method_name], e, args, original_method.arity)
+          base.class.handle_argument_error(base.class.commands[method_name], e, args, original_method.arity)
         end
       end
 
